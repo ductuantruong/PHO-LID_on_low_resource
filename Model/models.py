@@ -1,4 +1,4 @@
-from transformer import *
+from Model.transformer import *
 from pooling_layers import *
 
 

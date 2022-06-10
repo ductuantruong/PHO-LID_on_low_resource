@@ -9,9 +9,7 @@ def collate_fn(batch):
     seq, label = zip(*batch)
     seq_length = [len(x) for x in label]
     data = rnn_utils.pad_sequence(seq, batch_first=True, padding_value=0)
-    # label_stack = []
     label = rnn_utils.pad_sequence(label, batch_first=True, padding_value=0)
-    # return data, torch.tensor(label_stack), seq_length
     return data, label, seq_length
 
 
@@ -35,7 +33,6 @@ class RawFeatures(data.Dataset):
 
     def __getitem__(self, index):
         feature_path = self.feature_list[index]
-        # feature = torch.from_numpy(np.load(feature_path, allow_pickle=True))
         feature = torch.tensor(np.load(feature_path, allow_pickle=True).tolist())
         label = int(self.label_list[index])
         seq_len = int(self.seq_len_list[index])
