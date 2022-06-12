@@ -1,12 +1,12 @@
 {
     "input": {
-      "wav_csv_path": "data/wav_data/data_info.csv",
+      "wav_csv_path": "data/wav/data_info.csv",
       "run_name": "latest_run",
       "_comment": "Input your data dir here"
     },
     "model_config": {
-      "model": "PHOLID",
-      "upstream_model": "wav2vec2",
+      "model_type": "PHOLID",
+      "upstream_model": "wav2vec2_xlsr",
       "input_dim": 1024,
       "feat_dim": 64,
       "reduc_dim": 256,
@@ -18,7 +18,7 @@
     "optim_config": {
       "learning_rate": 0.0001,
       "epochs": 13,
-      "batch_size": 128,
+      "batch_size": 12,
       "optimizer": "Adam",
       "scheduler": "warmup_cosine",
       "num_work": 4,

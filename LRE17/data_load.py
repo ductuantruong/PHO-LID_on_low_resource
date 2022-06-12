@@ -28,8 +28,8 @@ class LRE17(data.Dataset):
             wav = torch.mean(wav, dim=0)
             wav = self.resampleUp(wav)
             # wav = self.pad_crop_transform(wav)
-
-        return wav, self.label_encoder.transform(lang)
+        lang, = list(self.label_encoder.transform([lang]))
+        return wav, lang
     
 def get_atten_mask(seq_lens, batch_size):
     max_len = seq_lens[0]

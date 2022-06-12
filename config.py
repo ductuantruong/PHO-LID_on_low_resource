@@ -18,7 +18,7 @@ class LRE17Config(object):
     lr = float(config['optim_config']['learning_rate'])
 
     # No of GPUs for training and no of workers for datalaoders
-    gpu = int(config['device'])
+    gpu = int(config['optim_config']['device'])
     
     n_workers = int(config['optim_config']['num_work'])
 
@@ -30,9 +30,9 @@ class LRE17Config(object):
 
     # feature dimension of upstream model. For example, 
     # For wav2vec2, feature_dim = 768
+    input_dim = config['model_config']['input_dim']
     feature_dim = config['model_config']['feat_dim']
     reduc_dim = config['model_config']['reduc_dim']
-    d_k = config['model_config']['d_k']
     d_ff = config['model_config']['d_ff']
     n_heads = config['model_config']['n_heads']
     n_language = config['model_config']['n_language']

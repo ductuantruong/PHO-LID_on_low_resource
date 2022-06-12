@@ -33,17 +33,11 @@ from Model.lightning_model import LightningModel
 
 import torch.nn.utils.rnn as rnn_utils
 
-# def collate_fn(batch):
-    # batch.sort(key=lambda x: len(x[1]), reverse=True)
-    # seq, label = zip(*batch)
-    # seq_length = [len(x) for x in label]
-    # data = rnn_utils.pad_sequence(seq, batch_first=True, padding_value=0)
-    # label = rnn_utils.pad_sequence(label, batch_first=True, padding_value=0)
-    # return data, label, seq_length
-
 def collate_fn_atten(batch):
-    batch.sort(key=lambda x: x[2], reverse=True)
-    seq, labels, seq_length = zip(*batch)
+    # batch.sort(key=lambda x: x[2], reverse=True)
+    seq, labels = zip(*batch)
+    seq = [x.reshape(-1,) for x in seq]
+    seq_length = [x.shape[0] for x in seq]
     data = rnn_utils.pad_sequence(seq, batch_first=True, padding_value=0)
     labels = torch.LongTensor(labels)
     return data, labels, seq_length
@@ -53,8 +47,10 @@ if __name__ == "__main__":
     parser.add_argument('--wav_csv_path', type=str, default=LRE17Config.wav_csv_path)
     parser.add_argument('--batch_size', type=int, default=LRE17Config.batch_size)
     parser.add_argument('--epochs', type=int, default=LRE17Config.epochs)
-    parser.add_argument('--num_layers', type=int, default=LRE17Config.num_layers)
-    parser.add_argument('--feature_dim', type=int, default=LRE17Config.feature_dim)
+    parser.add_argument('--input_dim', type=int, default=LRE17Config.input_dim)
+    parser.add_argument('--feat_dim', type=int, default=LRE17Config.feature_dim)
+    parser.add_argument('--n_heads', type=int, default=LRE17Config.n_heads)
+    parser.add_argument('--d_ff', type=int, default=LRE17Config.d_ff)
     parser.add_argument('--lr', type=float, default=LRE17Config.lr)
     parser.add_argument('--gpu', type=int, default=LRE17Config.gpu)
     parser.add_argument('--n_workers', type=int, default=LRE17Config.n_workers)
@@ -63,7 +59,6 @@ if __name__ == "__main__":
     parser.add_argument('--run_name', type=str, default=LRE17Config.run_name)
     parser.add_argument('--model_type', type=str, default=LRE17Config.model_type)
     parser.add_argument('--upstream_model', type=str, default=LRE17Config.upstream_model)
-    parser.add_argument('--narrow_band', type=str, default=LRE17Config.narrow_band)
     
     parser = pl.Trainer.add_argparse_args(parser)
     hparams = parser.parse_args()
@@ -77,8 +72,8 @@ if __name__ == "__main__":
     # Training, Validation and Testing Dataset
     ## Training Dataset
     train_set = LRE17(
-        data_type = 'TRAIN',
-        hparams = hparams
+        data_type='TRAIN',
+        hparams=hparams
     )
     ## Training DataLoader
     trainloader = data.DataLoader(
@@ -86,12 +81,12 @@ if __name__ == "__main__":
         batch_size=hparams.batch_size, 
         shuffle=True, 
         num_workers=hparams.n_workers,
-        collate_fn = collate_fn_atten,
+        collate_fn = collate_fn_atten
     )
     ## Validation Dataset
     valid_set = LRE17(
-        data_type = 'VAL',
-        hparams = hparams,
+        data_type='VAL',
+        hparams=hparams,
     )
     ## Validation Dataloader
     valloader = data.DataLoader(
@@ -99,12 +94,12 @@ if __name__ == "__main__":
         batch_size=1,
         shuffle=False, 
         num_workers=hparams.n_workers,
-        collate_fn = collate_fn_atten,
+        collate_fn = collate_fn_atten
     )
     ## Testing Dataset
     test_set = LRE17(
+        data_type='TEST',
         hparams = hparams,
-        is_train=False
     )
     ## Testing Dataloader
     testloader = data.DataLoader(
@@ -112,7 +107,7 @@ if __name__ == "__main__":
         batch_size=1,
         shuffle=False, 
         num_workers=hparams.n_workers,
-        collate_fn = collate_fn_atten,
+        collate_fn = collate_fn_atten
     )
 
     print('Dataset Split (Train, Validation, Test)=', len(train_set), len(valid_set), len(test_set))

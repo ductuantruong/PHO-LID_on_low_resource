@@ -53,7 +53,7 @@ for data_type in dict_data_type.keys():
             data_record = {
                 'utt_id': wav_file[:-4],
                 'data_type': data_type,
-                'wav_path': os.path.join(data_path, wav_file),
+                'wav_path': os.path.join(data_path, lang_name, wav_file),
                 'group_lang': group_lang,
                 'lang': lang
             }

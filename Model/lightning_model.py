@@ -25,7 +25,8 @@ class LightningModel(pl.LightningModule):
                                                         feat_dim=HPARAMS['feat_dim'],
                                                         d_k=HPARAMS['feat_dim'],
                                                         d_v=HPARAMS['feat_dim'],
-                                                        n_heads=HPARAMS['n_heads'] 
+                                                        n_heads=HPARAMS['n_heads'], 
+                                                        d_ff=HPARAMS['d_ff'] 
                                                     )
         
         self.accuracy = Accuracy()

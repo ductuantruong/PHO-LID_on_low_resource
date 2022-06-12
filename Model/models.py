@@ -1,5 +1,5 @@
 from Model.transformer import *
-from pooling_layers import *
+#from pooling_layers import *
 
 
 class CNN_Trans_LID(nn.Module):
