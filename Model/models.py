@@ -84,11 +84,13 @@ class CNN_Trans_LID(nn.Module):
         output = self.fc3(output)
         return output
 
+
 class PHOLID(nn.Module):
-    def __init__(self,input_dim, feat_dim,
+    def __init__(self, upstream_model, input_dim, feat_dim,
                  d_k, d_v, d_ff, n_heads=8,
                  dropout=0.1, n_lang=3, max_seq_len=10000):
         super(PHOLID, self).__init__()
+        self.upstream = torch.hub.load('s3prl/s3prl', upstream_model)
         self.input_dim = input_dim
 
         self.d_model = feat_dim * n_heads
@@ -135,6 +137,8 @@ class PHOLID(nn.Module):
 
     def forward(self, x, seq_len, mean_mask_=None, weight_mean=None, std_mask_=None, weight_unbaised=None,
                 atten_mask=None, eps=1e-5):
+        x = [torch.narrow(wav, 0, 0, seq_len[i]) for (i,wav) in enumerate(x.squeeze(1))]
+        x = self.upstream(x)['last_hidden_state']
         batch_size = x.size(0)
         T_len = x.size(1)
         x = x.view(batch_size * T_len, -1, self.input_dim).transpose(-1, -2)
@@ -166,7 +170,3 @@ class PHOLID(nn.Module):
             stats = torch.cat((output.mean(dim=1), output.std(dim=1)), dim=1)
         output = self.lid_clf(stats)
         return output, pho_out.reshape(batch_size, T_len, -1, 64)
-
-
-
-

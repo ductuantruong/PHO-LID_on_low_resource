@@ -36,7 +36,7 @@ for folder in os.listdir(train_data_path):
         list_lang_folder.append(folder)
 
 dict_data_type = {
-                    'TRN': train_data_path, 
+                    'TRAIN': train_data_path, 
                     'VAL': val_data_path
                 }
 

@@ -1,47 +1,36 @@
-import random
+import pandas as pd
 import numpy as np
 import torch
 import torch.utils.data as data
-import torch.nn.utils.rnn as rnn_utils
+import torchaudio
+import random
+from sklearn import preprocessing
 
-def collate_fn(batch):
-    batch.sort(key=lambda x: len(x[1]), reverse=True)
-    seq, label = zip(*batch)
-    seq_length = [len(x) for x in label]
-    data = rnn_utils.pad_sequence(seq, batch_first=True, padding_value=0)
-    label = rnn_utils.pad_sequence(label, batch_first=True, padding_value=0)
-    return data, label, seq_length
-
-
-def collate_fn_atten(batch):
-    batch.sort(key=lambda x: x[2], reverse=True)
-    seq, labels, seq_length = zip(*batch)
-    data = rnn_utils.pad_sequence(seq, batch_first=True, padding_value=0)
-    labels = torch.LongTensor(labels)
-    return data, labels, seq_length
-
-
-
-
-class RawFeatures(data.Dataset):
-    def __init__(self, txt_path):
-        with open(txt_path, 'r') as f:
-            lines = f.readlines()
-            self.feature_list = [i.split()[0] for i in lines]
-            self.label_list = [i.split()[1] for i in lines]
-            self.seq_len_list = [i.split()[2].strip() for i in lines]
-
-    def __getitem__(self, index):
-        feature_path = self.feature_list[index]
-        feature = torch.tensor(np.load(feature_path, allow_pickle=True).tolist())
-        label = int(self.label_list[index])
-        seq_len = int(self.seq_len_list[index])
-        return feature, label, seq_len
-
+class LRE17(data.Dataset):
+    def __init__(self, data_type, hparams):
+        self.df_full = pd.read_csv(hparams.wav_csv_path)
+        self.df = self.df_full[self.df_full['data_type'] == data_type].reset_index(drop=True)
+        list_language = self.df_full['lang'].unique()
+        self.label_encoder = preprocessing.LabelEncoder()
+        self.label_encoder.fit(list_language)
+        
     def __len__(self):
-        return len(self.label_list)
+        return len(self.df.index)
+    
+    def __getitem__(self, idx):
+        if torch.is_tensor(idx):
+            idx = idx.tolist()
+        lang = self.df.loc[idx, 'lang']
+        wav_path = self.df.loc[idx, 'wav_path']
 
+        wav, f = torchaudio.load(wav_path)
+        if(wav.shape[0] != 1):
+            wav = torch.mean(wav, dim=0)
+            wav = self.resampleUp(wav)
+            # wav = self.pad_crop_transform(wav)
 
+        return wav, self.label_encoder.transform(lang)
+    
 def get_atten_mask(seq_lens, batch_size):
     max_len = seq_lens[0]
     atten_mask = torch.ones([batch_size, max_len, max_len])
@@ -76,5 +65,3 @@ def mean_mask(seq_lens, batchsize, dim):
         length = seq_lens[i]
         atten_mask[i, :length, :] = 0
     return atten_mask.bool(), weight_unbaised
-
-
