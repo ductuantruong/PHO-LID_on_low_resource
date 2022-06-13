@@ -52,7 +52,7 @@ class LightningModel(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         x, y_lang, x_len = batch
         
-        y_lang_hat = self(x, x_len)
+        y_lang_hat, y_pho = self(x, x_len)
 
         loss = self.loss_module(y_lang_hat, y_lang)
         acc = self.accuracy(y_lang_hat, y_lang)
@@ -73,7 +73,7 @@ class LightningModel(pl.LightningModule):
     def validation_step(self, batch, batch_idx):
         x, y_lang, x_len = batch
         
-        y_lang_hat = self(x, x_len)
+        y_lang_hat, y_pho = self(x, x_len)
 
         loss = self.loss_module(y_lang_hat, y_lang)
         acc = self.accuracy(y_lang_hat, y_lang)
@@ -93,7 +93,7 @@ class LightningModel(pl.LightningModule):
 
     def test_step(self, batch, batch_idx):
         x, y_lang, x_len = batch
-        y_lang_hat = self(x, x_len)
+        y_lang_hat, y_pho = self(x, x_len)
 
         acc = self.accuracy(y_lang_hat, y_lang)
 

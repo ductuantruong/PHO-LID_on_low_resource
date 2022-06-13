@@ -12,7 +12,7 @@
       "reduc_dim": 256,
       "d_ff": 2048,
       "n_heads": 8,
-      "n_language": 10,
+      "n_language": 14,
       "_comment": "Model configurations, do not change unless you need to modify the model"
     },
     "optim_config": {
