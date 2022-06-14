@@ -5,8 +5,6 @@ import os
 import argparse
 from tqdm import tqdm
 
-from zmq import device
-
 my_parser = argparse.ArgumentParser(description='Path to the TIMIT dataset folder')
 my_parser.add_argument('--device',
                        metavar='device',
@@ -48,23 +46,31 @@ train_data_path = os.path.join(original_wav_dir, train_folder_name)
 val_data_path = os.path.join(original_wav_dir, val_folder_name)
 
 upstream_model = torch.hub.load('s3prl/s3prl', 'wav2vec2_xlsr').to(device)
+upstream_model_cpu = torch.hub.load('s3prl/s3prl', 'wav2vec2_xlsr').to('cpu')
 
 list_data_path = [train_data_path, val_data_path]
 for data_type_path in list_data_path:
+    print("Processing {} ...".format(data_type_path))
     for folder in os.listdir(data_type_path):
-        xlsr_lang_path = os.path.join(xlsr_folder_path, data_type_path, folder)
-        if os.path.exists(xlsr_lang_path):
-            os.mkdir(xlsr_lang_path)
-        else:
-            break
+        if not os.path.isdir(os.path.join(data_type_path, folder)):
+            continue
+        print("Processing {} ...".format(folder))
+        xlsr_lang_path = os.path.join(xlsr_folder_path, data_type_path.split('/')[-1], folder)
+        os.makedirs(xlsr_lang_path, exist_ok=True)
         
-        wav_folder_path = os.path.isdir(os.path.join(data_type_path, folder))
+        wav_folder_path = os.path.join(data_type_path, folder)
         for wav_file in tqdm(os.listdir(wav_folder_path)):
             wav_file_name = wav_file[:-4]
-            wav, f = torchaudio.load(os.path.join(wav_folder_path, wav_file)).to(device)
-            feature = upstream_model(wav)['last_hidden_state']
-            torch.save(feature, os.path.join(xlsr_lang_path, '{}.pt'.format(wav_file_name)))
+            save_path = os.path.join(xlsr_lang_path, '{}.pt'.format(wav_file_name))
+            if os.path.exists(save_path):
+                continue
+            wav, f = torchaudio.load(os.path.join(wav_folder_path, wav_file))
+            wav = wav.to(device)
+            try:
+                feature = upstream_model(wav)['last_hidden_state']
+            except:
+                wav = wav.cpu()
+                feature = upstream_model_cpu(wav)['last_hidden_state']
+            torch.save(feature, save_path)
+            feature.detach()
             
-
-
-
