@@ -1,5 +1,6 @@
 import torch
 import torchaudio
+import librosa
 
 import os
 import argparse
@@ -64,7 +65,9 @@ for data_type_path in list_data_path:
             save_path = os.path.join(xlsr_lang_path, '{}.pt'.format(wav_file_name))
             if os.path.exists(save_path):
                 continue
-            wav, f = torchaudio.load(os.path.join(wav_folder_path, wav_file))
+            wav, f = librosa.load(os.path.join(wav_folder_path, wav_file))
+            wav = torch.from_numpy(librosa.util.normalize(wav))
+            wav = librosa.effects.preemphasis(wav)
             wav = wav.to(device)
             try:
                 feature = upstream_model(wav)['last_hidden_state']
