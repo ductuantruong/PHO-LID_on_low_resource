@@ -34,6 +34,8 @@ my_parser.add_argument('--val_folder_name',
 
 args = my_parser.parse_args()
 
+up_sample_wav = torchaudio.transforms.Resample(orig_freq=8000, new_freq=16000)
+
 device = args.device
 original_data_dir = args.data_path
 xlsr_folder_path = os.path.join(original_data_dir, 'xlsr')
@@ -48,10 +50,13 @@ val_data_path = os.path.join(original_wav_dir, val_folder_name)
 upstream_model = torch.hub.load('s3prl/s3prl', 'wav2vec2_xlsr').to(device)
 upstream_model_cpu = torch.hub.load('s3prl/s3prl', 'wav2vec2_xlsr').to('cpu')
 
-list_data_path = [train_data_path, val_data_path]
+#list_data_path = [train_data_path, val_data_path]
+list_data_path = [val_data_path]
 for data_type_path in list_data_path:
     print("Processing {} ...".format(data_type_path))
     for folder in os.listdir(data_type_path):
+        if folder in ['iberian_spanish-carribbean', 'slavic_russian', 'iberian_spanish-latin-american', 'arabic_levantine', 'arabic_maghrebi', 'chinese_mandarin', 'arabic_egyptian']: #['arabic_egyptian', 'chinese_mandarin', 'arabic_levantine', 'slavic_russian']:
+            continue
         if not os.path.isdir(os.path.join(data_type_path, folder)):
             continue
         print("Processing {} ...".format(folder))
@@ -65,12 +70,19 @@ for data_type_path in list_data_path:
             if os.path.exists(save_path):
                 continue
             wav, f = torchaudio.load(os.path.join(wav_folder_path, wav_file))
-            wav = wav.to(device)
+            wav = up_sample_wav(wav)
             try:
+                wav = wav.to(device)
                 feature = upstream_model(wav)['last_hidden_state']
             except:
-                wav = wav.cpu()
-                feature = upstream_model_cpu(wav)['last_hidden_state']
+                try:
+                    wav = wav.cpu()
+                    feature = upstream_model_cpu(wav)['last_hidden_state']
+                except:
+                    with open('error_wav.txt', 'a') as f:
+                        f.writelines(os.path.join(wav_folder_path, wav_file) +  ' ' + str(wav.shape)  + '\n')
+                    del wav
+                    continue
             torch.save(feature, save_path)
-            feature.detach()
+            del feature
             
