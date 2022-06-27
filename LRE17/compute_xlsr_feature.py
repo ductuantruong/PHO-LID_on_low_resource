@@ -15,77 +15,51 @@ my_parser.add_argument('--device',
 my_parser.add_argument('--data_path',
                        metavar='data_path',
                        type=str,
-                       default='data',
+                       default='/home/project/12001458/LRE22/LRE17/JC_data/data/wav',
                        help='the path to dataset folder')
 my_parser.add_argument('--wav_path',
                        metavar='wav_path',
                        type=str,
-                       default='data/wav',
+                       default='train',
                        help='the path to wav folder')
-my_parser.add_argument('--train_folder_name',
-                       metavar='train_folder_name',
-                       type=str,
-                       default='lre-17-train',
-                       help='the name of train data folder')
-my_parser.add_argument('--val_folder_name',
-                       metavar='val_folder_name',
-                       type=str,
-                       default='lre-17-eval',
-                       help='the name of validate data folder')
 
 args = my_parser.parse_args()
-
-up_sample_wav = torchaudio.transforms.Resample(orig_freq=8000, new_freq=16000)
 
 device = args.device
 original_data_dir = args.data_path
 xlsr_folder_path = os.path.join(original_data_dir, 'xlsr')
 
-original_wav_dir = args.wav_path
-train_folder_name = os.path.join(args.train_folder_name)
-val_folder_name = os.path.join(args.val_folder_name)
-
-train_data_path = os.path.join(original_wav_dir, train_folder_name)
-val_data_path = os.path.join(original_wav_dir, val_folder_name)
+wav_dir = args.wav_path
 
 upstream_model = torch.hub.load('s3prl/s3prl', 'wav2vec2_xlsr').to(device)
 upstream_model_cpu = torch.hub.load('s3prl/s3prl', 'wav2vec2_xlsr').to('cpu')
 
-#list_data_path = [train_data_path, val_data_path]
-list_data_path = [val_data_path]
-for data_type_path in list_data_path:
-    print("Processing {} ...".format(data_type_path))
-    for folder in os.listdir(data_type_path):
-        if folder in ['iberian_spanish-carribbean', 'slavic_russian', 'iberian_spanish-latin-american', 'arabic_levantine', 'arabic_maghrebi', 'chinese_mandarin', 'arabic_egyptian']: #['arabic_egyptian', 'chinese_mandarin', 'arabic_levantine', 'slavic_russian']:
+print("Processing {} ...".format(wav_dir))
+xlsr_lang_path = os.path.join(xlsr_folder_path, wav_dir)
+os.makedirs(xlsr_lang_path, exist_ok=True)
+    
+wav_folder_path = os.path.join(original_data_dir, xlsr_folder_path)
+for wav_file in tqdm(os.listdir(wav_folder_path)):
+    wav_file_name = wav_file[:-4]
+    save_path = os.path.join(xlsr_lang_path, '{}.pt'.format(wav_file_name))
+    if os.path.exists(save_path):
+        continue
+    wav, f = librosa.load(os.path.join(wav_folder_path, wav_file))
+    wav = torch.from_numpy(librosa.util.normalize(wav))
+    wav = librosa.effects.preemphasis(wav)
+    wav = wav.to(device)
+    try:
+        wav = wav.to(device)
+        feature = upstream_model(wav)['last_hidden_state']
+    except:
+        try:
+            wav = wav.cpu()
+            feature = upstream_model_cpu(wav)['last_hidden_state']
+        except:
+            with open('error_wav.txt', 'a') as f:
+                f.writelines(os.path.join(wav_folder_path, wav_file) +  ' ' + str(wav.shape)  + '\n')
+            del wav
             continue
-        if not os.path.isdir(os.path.join(data_type_path, folder)):
-            continue
-        print("Processing {} ...".format(folder))
-        xlsr_lang_path = os.path.join(xlsr_folder_path, data_type_path.split('/')[-1], folder)
-        os.makedirs(xlsr_lang_path, exist_ok=True)
+    torch.save(feature, save_path)
+    del feature
         
-        wav_folder_path = os.path.join(data_type_path, folder)
-        for wav_file in tqdm(os.listdir(wav_folder_path)):
-            wav_file_name = wav_file[:-4]
-            save_path = os.path.join(xlsr_lang_path, '{}.pt'.format(wav_file_name))
-            if os.path.exists(save_path):
-                continue
-            wav, f = librosa.load(os.path.join(wav_folder_path, wav_file))
-            wav = torch.from_numpy(librosa.util.normalize(wav))
-            wav = librosa.effects.preemphasis(wav)
-            wav = wav.to(device)
-            try:
-                wav = wav.to(device)
-                feature = upstream_model(wav)['last_hidden_state']
-            except:
-                try:
-                    wav = wav.cpu()
-                    feature = upstream_model_cpu(wav)['last_hidden_state']
-                except:
-                    with open('error_wav.txt', 'a') as f:
-                        f.writelines(os.path.join(wav_folder_path, wav_file) +  ' ' + str(wav.shape)  + '\n')
-                    del wav
-                    continue
-            torch.save(feature, save_path)
-            del feature
-            
