@@ -34,20 +34,20 @@ wav_dir = args.wav_path
 upstream_model = torch.hub.load('s3prl/s3prl', 'wav2vec2_xlsr').to(device)
 upstream_model_cpu = torch.hub.load('s3prl/s3prl', 'wav2vec2_xlsr').to('cpu')
 
-print("Processing {} ...".format(wav_dir))
 xlsr_lang_path = os.path.join(xlsr_folder_path, wav_dir)
 os.makedirs(xlsr_lang_path, exist_ok=True)
     
-wav_folder_path = os.path.join(original_data_dir, xlsr_folder_path)
-for wav_file in tqdm(os.listdir(wav_folder_path)):
+wav_folder_path = os.path.join(original_data_dir, wav_dir)
+print("Processing {} ...".format(wav_folder_path))
+list_file = os.listdir(wav_folder_path)
+for wav_file in tqdm(list_file[len(list_file)//2:]):
     wav_file_name = wav_file[:-4]
     save_path = os.path.join(xlsr_lang_path, '{}.pt'.format(wav_file_name))
     if os.path.exists(save_path):
         continue
     wav, f = librosa.load(os.path.join(wav_folder_path, wav_file))
-    wav = torch.from_numpy(librosa.util.normalize(wav))
-    wav = librosa.effects.preemphasis(wav)
-    wav = wav.to(device)
+    wav = librosa.util.normalize(wav)
+    wav = torch.from_numpy(librosa.effects.preemphasis(wav)).unsqueeze(0)
     try:
         wav = wav.to(device)
         feature = upstream_model(wav)['last_hidden_state']
@@ -55,9 +55,9 @@ for wav_file in tqdm(os.listdir(wav_folder_path)):
         try:
             wav = wav.cpu()
             feature = upstream_model_cpu(wav)['last_hidden_state']
-        except:
+        except Exception as e:
             with open('error_wav.txt', 'a') as f:
-                f.writelines(os.path.join(wav_folder_path, wav_file) +  ' ' + str(wav.shape)  + '\n')
+                f.writelines(os.path.join(wav_folder_path, wav_file) +  ' ' + str(wav.shape) + str(e) + '\n')
             del wav
             continue
     torch.save(feature, save_path)
