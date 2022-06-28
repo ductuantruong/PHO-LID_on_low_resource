@@ -1,63 +1,47 @@
 import os
+from re import U
+import shutil
 import argparse
-from tokenize import group
+import scipy as sp
 import pandas as pd
-from os.path import isfile
 
 my_parser = argparse.ArgumentParser(description='Path to the TIMIT dataset folder')
-my_parser.add_argument('--path',
-                       metavar='path',
+my_parser.add_argument('--data_path',
+                       metavar='data_path',
                        type=str,
-                       default='data/wav',
+                       default='/home/project/12001458/ductuan0/ISCAP_Age_Estimation/data/',
                        help='the path to dataset folder')
-my_parser.add_argument('--train_folder_name',
-                       metavar='train_folder_name',
+my_parser.add_argument('--metadata_path',
+                       metavar='metadata_path',
                        type=str,
-                       default='lre-17-train',
-                       help='the name of train data folder')
-my_parser.add_argument('--val_folder_name',
-                       metavar='val_folder_name',
-                       type=str,
-                       default='lre-17-eval',
-                       help='the name of validate data folder')
+                       default='/home/project/12001458/ductuan0/ISCAP_Age_Estimation/data/',
+                       help='the path to metadata folder')
+
 args = my_parser.parse_args()
 
 
-original_data_dir = args.path
-train_folder_name = os.path.join(args.train_folder_name)
-val_folder_name = os.path.join(args.val_folder_name)
+data_dir = args.data_path
+metadata_dir = args.metadata_path
 
-train_data_path = os.path.join(original_data_dir, train_folder_name)
-val_data_path = os.path.join(original_data_dir, val_folder_name)
 
-list_lang_folder = []
-for folder in os.listdir(train_data_path):
-    if os.path.isdir(os.path.join(train_data_path, folder)):
-        list_lang_folder.append(folder)
+list_data_type = os.listdir(metadata_dir)
 
-dict_data_type = {
-                    'TRAIN': train_data_path, 
-                    'VAL': val_data_path
-                }
-
-data_df = pd.DataFrame(columns=['utt_id', 'data_type', 'wav_path', 'group_lang', 'lang'], index=None)
-
-list_data_record = []
-for data_type in dict_data_type.keys():
+data_df = pd.DataFrame(columns=['utt_id', 'wav_path', 'data_type', 'lang'], index=None)
+for data_type in list_data_type:
+    lst_data_record = []
     print('Processing {} dataset'.format(data_type))
-    data_path = dict_data_type[data_type]
-    for lang_name in list_lang_folder:
-        group_lang = lang_name.split('_')[0]
-        lang = lang_name.split('_')[1]
-        for wav_file in os.listdir(os.path.join(data_path, lang_name)):
+    with open(os.path.join(metadata_dir, data_type, 'utt2lang'), 'r') as utt2age_file:
+        for line in utt2age_file.readlines():
+            line = line.strip('\n')
+            utt_id, lang = line.split(' ')
+            wav_data_type = data_type if data_type == 'train' else 'test'
             data_record = {
-                'utt_id': wav_file[:-4],
+                'utt_id': utt_id,
+                'wav_path': os.path.join(data_dir, wav_data_type, utt_id+'.wav'),
                 'data_type': data_type,
-                'wav_path': os.path.join(data_path, lang_name, wav_file),
-                'group_lang': group_lang,
-                'lang': lang
+                'lang': lang,
             }
-            list_data_record.append(data_record)
-data_df = pd.concat([data_df, pd.DataFrame.from_records(list_data_record)], ignore_index=True)
-data_df.to_csv(os.path.join(original_data_dir, 'data_info.csv'), index=False)
-print('Data saved at ', original_data_dir)
+            lst_data_record.append(data_record)
+    data_df = pd.concat([data_df, pd.DataFrame.from_records(lst_data_record)], ignore_index=True)
+data_df.to_csv(os.path.join(data_dir, 'data_info_age.csv'), index=False)
+print('Data saved at ', data_dir)
