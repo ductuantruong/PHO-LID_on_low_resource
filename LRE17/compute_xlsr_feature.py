@@ -5,6 +5,7 @@ import librosa
 import os
 import argparse
 from tqdm import tqdm
+from preprocess_audio import preprocess_audio
 
 my_parser = argparse.ArgumentParser(description='Path to the TIMIT dataset folder')
 my_parser.add_argument('--device',
@@ -40,14 +41,12 @@ os.makedirs(xlsr_lang_path, exist_ok=True)
 wav_folder_path = os.path.join(original_data_dir, wav_dir)
 print("Processing {} ...".format(wav_folder_path))
 list_file = os.listdir(wav_folder_path)
-for wav_file in tqdm(list_file[len(list_file)//2:]):
+for wav_file in tqdm(list_file):
     wav_file_name = wav_file[:-4]
     save_path = os.path.join(xlsr_lang_path, '{}.pt'.format(wav_file_name))
     if os.path.exists(save_path):
         continue
-    wav, f = librosa.load(os.path.join(wav_folder_path, wav_file))
-    wav = librosa.util.normalize(wav)
-    wav = torch.from_numpy(librosa.effects.preemphasis(wav)).unsqueeze(0)
+    wav = preprocess_audio(os.path.join(wav_folder_path, wav_file))
     try:
         wav = wav.to(device)
         feature = upstream_model(wav)['last_hidden_state']
