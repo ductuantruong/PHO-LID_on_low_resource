@@ -1,6 +1,6 @@
+from errno import EILSEQ
 from Model.transformer import *
-#from pooling_layers import *
-
+from utils.masking import *
 
 class CNN_Trans_LID(nn.Module):
     def __init__(self, input_dim, feat_dim,
@@ -86,11 +86,11 @@ class CNN_Trans_LID(nn.Module):
 
 
 class PHOLID(nn.Module):
-    def __init__(self, upstream_model, input_dim, feat_dim,
+    def __init__(self, input_dim, feat_dim,
                  d_k, d_v, d_ff, n_heads=8,
-                 dropout=0.1, n_lang=14, max_seq_len=10000):
+                 dropout=0.1, n_lang=14, max_seq_len=10000, is_train=False):
         super(PHOLID, self).__init__()
-        self.upstream = torch.hub.load('s3prl/s3prl', upstream_model)
+        self.is_train = is_train
         self.input_dim = input_dim
 
         self.d_model = feat_dim * n_heads
@@ -135,24 +135,23 @@ class PHOLID(nn.Module):
         std = torch.sqrt(variance.transpose(0, 1))
         return torch.cat((correct_mean, std), dim=1)
 
-    def forward(self, x, seq_len, mean_mask_=None, weight_mean=None, std_mask_=None, weight_unbaised=None,
-                atten_mask=None, eps=1e-5):
-        x = [torch.narrow(wav, 0, 0, seq_len[i]) for (i,wav) in enumerate(x.squeeze(1))]
-        x = self.upstream(x)['last_hidden_state']
-        seq_len = [i.shape[0] for i in x]
-        batch_size = x.size(0)
-        T_len = x.size(1)
-        x = x.view(batch_size * T_len, -1, self.input_dim).transpose(-1, -2)
+    def forward(self, utt, seq_len, eps=1e-5):
+        batch_size = utt.size(0)
+        T_len = utt.size(1)
+        # print('utt', utt.shape)
+        x = utt.view(batch_size * T_len, -1, self.input_dim).transpose(-1, -2)
+        # print('shared_TDNN', x.shape)
         x = self.shared_TDNN(x)
         pho_x = x.transpose(-1, -2)
+        # print('after shared_TDNN', pho_x.shape)
         pho_out = self.phoneme_proj(pho_x)
 
-        if self.training:
-            shape = x.size()
-            noise = torch.Tensor(shape)
-            noise = noise.type_as(x)
-            torch.randn(shape, out=noise)
-            x += noise * eps
+        # if self.is_train:
+            # shape = x.size()
+            # noise = torch.Tensor(shape)
+            # noise = noise.type_as(x)
+            # torch.randn(shape, out=noise)
+            # x += noise * eps
 
         seg_stats = torch.cat((x.mean(dim=2), x.std(dim=2, unbiased=False)), dim=1)
         embedding = self.fc_xv(seg_stats)
@@ -162,9 +161,19 @@ class PHOLID(nn.Module):
         output = self.layernorm2(output)
         output = output.unsqueeze(1).repeat(1, self.n_heads, 1, 1)
         output = output.transpose(1, 2).contiguous().view(batch_size, -1, self.d_model)
+
+        if self.is_train:
+            atten_mask = get_atten_mask(seq_len, utt.size(0))
+            atten_mask = atten_mask.to(self.device)
+            mean_mask_, weight_mean = mean_mask(seq_len, len(seq_len), dim=self.feat_dim * self.n_heads)
+            std_mask_, weight_unbaised = std_mask(seq_len, len(seq_len), dim=self.feat_dim * self.n_heads)
+        else:            
+            atten_mask = None
+            
         output, _ = self.attention_block1(output, atten_mask)
         output, _ = self.attention_block2(output, atten_mask)
-        if std_mask_ is not None:
+
+        if self.is_train:
             stats = self.mean_std_pooling(output, batch_size, seq_len, mean_mask_, weight_mean,
                                           std_mask_, weight_unbaised)
         else:

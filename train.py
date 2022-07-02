@@ -34,9 +34,7 @@ from Model.lightning_model import LightningModel
 import torch.nn.utils.rnn as rnn_utils
 
 def collate_fn_atten(batch):
-    # batch.sort(key=lambda x: x[2], reverse=True)
     seq, labels = zip(*batch)
-    seq = [x.reshape(-1,) for x in seq]
     seq_length = [x.shape[0] for x in seq]
     data = rnn_utils.pad_sequence(seq, batch_first=True, padding_value=0)
     labels = torch.LongTensor(labels)
@@ -45,13 +43,19 @@ def collate_fn_atten(batch):
 if __name__ == "__main__":
     parser = ArgumentParser(add_help=True)
     parser.add_argument('--wav_csv_path', type=str, default=LRE17Config.wav_csv_path)
+    parser.add_argument('--data_dir', type=str, default=LRE17Config.data_dir)
     parser.add_argument('--batch_size', type=int, default=LRE17Config.batch_size)
     parser.add_argument('--epochs', type=int, default=LRE17Config.epochs)
+    parser.add_argument('--SSL_epochs', type=int, default=LRE17Config.SSL_epochs)
+    parser.add_argument('--warmup', type=int, default=LRE17Config.epochs*3)
+    parser.add_argument('--nega_frames', type=int, default=LRE17Config.nega_frames)
     parser.add_argument('--input_dim', type=int, default=LRE17Config.input_dim)
     parser.add_argument('--feat_dim', type=int, default=LRE17Config.feature_dim)
     parser.add_argument('--n_heads', type=int, default=LRE17Config.n_heads)
     parser.add_argument('--d_ff', type=int, default=LRE17Config.d_ff)
     parser.add_argument('--lr', type=float, default=LRE17Config.lr)
+    parser.add_argument('--weight_lid', type=float, default=LRE17Config.weight_lid)
+    parser.add_argument('--weight_ssl', type=float, default=LRE17Config.weight_ssl)
     parser.add_argument('--gpu', type=int, default=LRE17Config.gpu)
     parser.add_argument('--n_workers', type=int, default=LRE17Config.n_workers)
     parser.add_argument('--dev', type=str, default=False)
@@ -72,12 +76,12 @@ if __name__ == "__main__":
     # Training, Validation and Testing Dataset
     ## Training Dataset
     train_set = LRE17(
-        data_type='TRAIN',
-        hparams=hparams
+        hparams=hparams,
+        data_type='train'
     )
     ## Training DataLoader
-    trainloader = data.DataLoader(
-        train_set, 
+    train_loader = data.DataLoader(
+        dataset=train_set, 
         batch_size=hparams.batch_size, 
         shuffle=True, 
         num_workers=hparams.n_workers,
@@ -85,21 +89,22 @@ if __name__ == "__main__":
     )
     ## Validation Dataset
     valid_set = LRE17(
-        data_type='VAL',
         hparams=hparams,
+        data_type='eval'
     )
+
     ## Validation Dataloader
-    valloader = data.DataLoader(
+    val_loader = data.DataLoader(
         valid_set, 
-        batch_size=1,
+        batch_size=2,
         shuffle=False, 
         num_workers=hparams.n_workers,
         collate_fn = collate_fn_atten
     )
     ## Testing Dataset
     test_set = LRE17(
-        data_type='TEST',
         hparams = hparams,
+        data_type='eval'
     )
     ## Testing Dataloader
     testloader = data.DataLoader(
@@ -148,6 +153,6 @@ if __name__ == "__main__":
         )
 
     # Fit model
-    trainer.fit(model, train_dataloader=trainloader, val_dataloaders=valloader)
+    trainer.fit(model, train_dataloader=train_loader, val_dataloaders=val_loader)
 
     print('\n\nCompleted Training...\nTesting the model with checkpoint -', model_checkpoint_callback.best_model_path)

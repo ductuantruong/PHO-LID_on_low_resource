@@ -8,17 +8,21 @@ class LRE17Config(object):
     
     wav_csv_path = config['input']['wav_csv_path']
     
+    data_dir = config['input']['data_dir']
+    
     run_name = config['input']['run_name']
 
     batch_size = int(config['optim_config']['batch_size'])
     
     epochs = int(config['optim_config']['epochs'])
-
+    SSL_epochs = int(config['optim_config']['SSL_epochs'])
     # LR of optimizer
     lr = float(config['optim_config']['learning_rate'])
-
+    weight_lid = float(config['optim_config']['weight_lid'])
+    weight_ssl = float(config['optim_config']['weight_ssl'])
+    
     # No of GPUs for training and no of workers for datalaoders
-    gpu = int(config['optim_config']['device'])
+    gpu = int(config['optim_config']['gpu'])
     
     n_workers = int(config['optim_config']['num_work'])
 
@@ -30,6 +34,7 @@ class LRE17Config(object):
 
     # feature dimension of upstream model. For example, 
     # For wav2vec2, feature_dim = 768
+    nega_frames = config['optim_config']['nega_frames']
     input_dim = config['model_config']['input_dim']
     feature_dim = config['model_config']['feat_dim']
     reduc_dim = config['model_config']['reduc_dim']

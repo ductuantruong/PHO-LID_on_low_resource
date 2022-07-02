@@ -93,7 +93,8 @@ class Phoneme_SSL_loss(nn.Module):
         output_ = 0
         for i in range(len(seq_len)):
             length = seq_len[i]
-            output = outputs[i, :length, :, :]
+            # output = outputs[i, :length, :, :]
+            output = outputs[i, :length, :]
             if i == 0:
                 output_ = output
             else:
@@ -101,7 +102,9 @@ class Phoneme_SSL_loss(nn.Module):
         return output_
 
     def forward(self, output, seq_len):
+        # print('output.shape', output.shape)
         output_seg = self.get_output_phn(output, seq_len)
+        # print(output_seg.shape)
         num_seg, num_frame, dim = output_seg.size()
         sim_pos = F.cosine_similarity(output_seg[:, :-1, :], output_seg[:, 1:, :], dim=-1).unsqueeze(-1)
         output_seg_group = output_seg.transpose(0, 1).reshape(num_frame, -1)

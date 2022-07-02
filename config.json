@@ -1,6 +1,7 @@
 {
     "input": {
-      "wav_csv_path": "data/wav/data_info.csv",
+      "wav_csv_path": "data/data_lang_info.csv",
+      "data_dir": "data/",
       "run_name": "latest_run",
       "_comment": "Input your data dir here"
     },
@@ -18,11 +19,11 @@
     "optim_config": {
       "learning_rate": 0.0001,
       "epochs": 13,
-      "batch_size": 12,
+      "batch_size": 2,
       "optimizer": "Adam",
       "scheduler": "warmup_cosine",
       "num_work": 4,
-      "device": -1,
+      "gpu": -1,
       "DDP": "False",
       "SSL_epochs":3,
       "warmup_step": -1,
