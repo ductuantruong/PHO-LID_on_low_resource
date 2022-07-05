@@ -1,9 +1,10 @@
 import os
 from re import U
-import shutil
+from pydub.utils import mediainfo
 import argparse
 import scipy as sp
 import pandas as pd
+from tqdm.contrib.concurrent import process_map
 
 my_parser = argparse.ArgumentParser(description='Path to the TIMIT dataset folder')
 my_parser.add_argument('--data_path',
@@ -20,28 +21,36 @@ my_parser.add_argument('--metadata_path',
 args = my_parser.parse_args()
 
 
+def get_data_info(line):
+    line = line.strip('\n')
+    utt_id, lang = line.split(' ')
+    wav_data_type = data_type if data_type == 'train' else 'test'
+    wav_path = os.path.join(data_dir, wav_data_type, utt_id+'.wav')
+    duration = mediainfo(wav_path)[duration]
+    data_record = {
+        'utt_id': utt_id,
+        'wav_path': os.path.join(data_dir, wav_data_type, utt_id+'.wav'),
+        'duration': duration,
+        'data_type': data_type,
+        'lang': lang,
+    }
+    return data_record
+
 data_dir = args.data_path
 metadata_dir = args.metadata_path
 
 
 list_data_type = os.listdir(metadata_dir)
 
-data_df = pd.DataFrame(columns=['utt_id', 'wav_path', 'data_type', 'lang'], index=None)
+data_df = pd.DataFrame(columns=['utt_id', 'wav_path', 'duration', 'data_type', 'lang'], index=None)
 for data_type in list_data_type:
     lst_data_record = []
     print('Processing {} dataset'.format(data_type))
     with open(os.path.join(metadata_dir, data_type, 'utt2lang'), 'r') as utt2age_file:
-        for line in utt2age_file.readlines():
-            line = line.strip('\n')
-            utt_id, lang = line.split(' ')
-            wav_data_type = data_type if data_type == 'train' else 'test'
-            data_record = {
-                'utt_id': utt_id,
-                'wav_path': os.path.join(data_dir, wav_data_type, utt_id+'.wav'),
-                'data_type': data_type,
-                'lang': lang,
-            }
-            lst_data_record.append(data_record)
-    data_df = pd.concat([data_df, pd.DataFrame.from_records(lst_data_record)], ignore_index=True)
+        metainfo = process_map(get_data_info,
+                                utt2age_file.readlines(),
+                                max_workers = 16,
+                                chunksize = 10)
+    data_df = pd.concat([data_df, pd.DataFrame.from_records(metainfo)], ignore_index=True)
 data_df.to_csv(os.path.join(data_dir, 'data_info_age.csv'), index=False)
 print('Data saved at ', data_dir)
