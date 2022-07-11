@@ -13,7 +13,7 @@ class LRE17(Dataset):
         self.df_full = pd.read_csv(self.hparams.wav_csv_path)
         self.data_type = data_type
         self.df = self.df_full[self.df_full['data_type'].str.contains(self.data_type)].reset_index(drop=True)
-        list_language = self.df_full['lang'].unique()
+        list_language = self.df['lang'].unique()
         self.label_encoder = preprocessing.LabelEncoder()
         self.label_encoder.fit(list_language)
         self.is_load_wav = is_load_wav

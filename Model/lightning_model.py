@@ -71,7 +71,7 @@ class LightningModel(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         x, y_lang, x_len = batch
              
-        y_lang_hat, y_pho = self(x, x_len)
+        y_lang_hat, y_pho = self(x, x_len, is_train=True)
 
         if self.current_epoch < self.SSL_epochs:
             loss_phn = self.loss_func_phn(y_pho, x_len)
